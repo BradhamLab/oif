@@ -45,3 +45,5 @@ following format:
 To run the script, issue the following command:
  
 `python parse_oif.py <input.json>`
+
+Both oiffile.py and tiffile.py were taken from here: https://www.lfd.uci.edu/~gohlke/
