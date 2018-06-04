@@ -17,11 +17,11 @@ import numpy as np
 from skimage.io import imsave
 
 # Local libraries
-# sys.path.append("/home/dakota/PythonModules/OIF/")
 import oiffile
-# from CellLabeller import scale_image
 
-def scale_bit_image(image, bits, img_min=0, new_min=0, new_max=1):
+from matplotlib import pyplot as plt
+
+def scale_bit_image(image, bits, new_min=0, new_max=1):
     """
     Scale amplitude values to a new range.
 
@@ -30,17 +30,35 @@ def scale_bit_image(image, bits, img_min=0, new_min=0, new_max=1):
     Arguments:
         image (numpy.ndarray): image to be scaled.
         bits (int): how many unsigned bits the integer can take. (ex. 8-bit)
-        img_min (int): minimum value for image range. Default is 0.
         new_min (float): new minimum for re-scaled data.
         new_max (float): new maximum for re-scaled data.
     Returns:
         (numpy.ndarray): scaled image with values in [`new_min`, `new_max`].
     """
     img_max = 2**bits - 1
+    img_min = 0
     scale_quotient = (new_max - new_min)/(img_max - img_min)
     scaled = scale_quotient*(image - img_min) + new_min
     return(scaled)
 
+def scale_image(image, c_min, new_min, c_max, new_max):
+    """
+    Re-scale image to new intensity range.
+
+    Arguments:
+        Arguments:
+        image (numpy.ndarray): image to be scaled.
+        c_min (float): current minimum value.
+        new_min (float): new minimum for re-scaled data.
+        c_max (float): current maximum value.
+        new_max (float): new maximum for re-scaled data.
+    Returns:
+        (numpy.ndarray): scaled image with values in [`new_min`, `new_max`].
+    """
+
+    scale_quotient = (new_max - new_min)/(c_max - c_min)
+    scaled = scale_quotient*(image - c_min) + new_min
+    return(scaled)
 
 def oif_to_dir_tree(in_file, channel_stains, person, hpf, treatment, out_dir, prefix=""):
     """
@@ -100,7 +118,7 @@ def oif_to_dir_tree(in_file, channel_stains, person, hpf, treatment, out_dir, pr
         metadata["WidthConvert"] = "{} {}".format(
                                              reference['WidthConvertValue'],
                                              reference['WidthUnit'])
-        nbits = reference['ValidBitCounts']
+        nbits = int(reference['ValidBitCounts'])
         axis_order = oif.mainfile['Axis Parameter Common']['AxisOrder']
         z_axis = [str(i) for i, x in enumerate(axis_order) if x == 'Z']
         axis_key = "Axis {} Parameters Common".format(z_axis[0])
@@ -151,9 +169,26 @@ def oif_to_dir_tree(in_file, channel_stains, person, hpf, treatment, out_dir, pr
                 z_string = 'z' + z_to_string(z, image.shape[z_idx])
                 file_name = base_name + 'c' + str(channel + 1) + z_string
                 img_file = path.join(channel_path, file_name + '.png')
+
+                if channel_stains[channel].lower() == "pmc":
+                    contrast_path = path.join(channel_path, "ContrastImages")
+                    intensity_path = path.join(channel_path, "IntensityImages")
+                    if not path.exists(contrast_path):
+                        makedirs(contrast_path)
+                    if not path.exists(intensity_path):
+                        makedirs(intensity_path)
+
+                    contrast_file = path.join(contrast_path, file_name + '.png')
+                    contrast_img = scale_image(image[channel][z],
+                                               np.min(image[channel][z]), 0,
+                                               np.max(image[channel][z]), 255)
+                    imsave(contrast_file, contrast_img.astype(np.uint8))
+                    img_file = path.join(intensity_path, file_name + '.png')
+                                    
+                
                 # scale images to 0 - 255
-                out_img = scale_bit_image(image[channel][z], nbits, 0, 0, 255)
-                imsave(img_file, out_img.astype(int))
+                out_img = scale_bit_image(image[channel][z], nbits, 0, 255)
+                imsave(img_file, out_img.astype(np.uint8))
 
         # Write metadata to json file
         with open(path.join(base_dir, "metadata.json"), 'w') as out_file:
