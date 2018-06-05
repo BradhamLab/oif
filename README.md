@@ -26,6 +26,14 @@ File structure example using `/path/to/my/<basename>.oif` with 3 Channels:
     - z1.png
     - ...
     
+If a PMC channel is present, the associated channel directory will break into two sub directories.
+ 
+- PMCChannel
+  - ContrastImages
+  - IntensityImages
+  
+The directory `ContrastImages` has the contrast between intensity values increased. `IntensityImages` keeps the raw intensity values. PMC labelling should be done on `ContrastImages`, while downstream analysis should use the raw data in `IntensityImages`.
+    
 The main script, `parse_oif.py` takes a single `.json` file as input with the
 following format:
 
